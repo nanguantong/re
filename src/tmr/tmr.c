@@ -3,6 +3,8 @@
  *
  * Copyright (C) 2010 Creytiv.com
  */
+#define _DEFAULT_SOURCE 1
+
 #include <string.h>
 #ifdef HAVE_SYS_TIME_H
 #include <sys/time.h>
@@ -113,6 +115,40 @@ void tmr_poll(struct list *tmrl)
 		th(th_arg);
 #endif
 	}
+}
+
+
+/**
+ * Get the timer jiffies in microseconds
+ *
+ * @return Jiffies in [us]
+ */
+uint64_t tmr_jiffies_us(void)
+{
+	uint64_t jfs;
+
+#if defined(WIN32)
+	LARGE_INTEGER li;
+	static LARGE_INTEGER freq;
+
+	if (!freq.QuadPart)
+		QueryPerformanceFrequency(&freq);
+
+	QueryPerformanceCounter(&li);
+	li.QuadPart *= 1000000;
+	li.QuadPart /= freq.QuadPart;
+
+	jfs = li.QuadPart;
+#else
+	struct timespec now;
+
+	clock_gettime(CLOCK_MONOTONIC_RAW, &now);
+
+	jfs  = (long)now.tv_sec * (uint64_t)1000000;
+	jfs += now.tv_nsec/1000;
+#endif
+
+	return jfs;
 }
 
 
