@@ -142,7 +142,10 @@ uint64_t tmr_jiffies_us(void)
 #else
 	struct timespec now;
 
-	clock_gettime(CLOCK_MONOTONIC_RAW, &now);
+	if (0 != clock_gettime(CLOCK_MONOTONIC_RAW, &now)) {
+		DEBUG_WARNING("jiffies: clock_gettime() failed (%m)\n", errno);
+		return 0;
+	}
 
 	jfs  = (long)now.tv_sec * (uint64_t)1000000;
 	jfs += now.tv_nsec/1000;
