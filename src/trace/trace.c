@@ -29,7 +29,7 @@ struct trace_event {
 	void *id;
 	uint64_t ts;
 	int pid;
-	uint32_t tid;
+	unsigned long tid;
 	char ph;
 	re_trace_arg_type arg_type;
 	const char *arg_name;
@@ -61,10 +61,10 @@ static struct {
 };
 
 
-static inline uint32_t get_thread_id(void)
+static inline unsigned long get_thread_id(void)
 {
 #if defined(WIN32)
-	return (uint32_t)GetCurrentThreadId();
+	return (unsigned long)GetCurrentThreadId();
 #elif defined (DARWIN) || defined (FREEBSD) || defined (OPENBSD) || \
 	defined (NETBSD) || defined (DRAGONFLY)
 	return (unsigned long)(void *)pthread_self();
