@@ -46,8 +46,6 @@ static struct {
 	int event_count;
 	struct trace_event *event_buffer;
 	struct trace_event *event_buffer_flush;
-	bool tracing;
-	bool flushing;
 	struct lock *lock;
 } trace = {
 	0,
@@ -55,8 +53,6 @@ static struct {
 	0,
 	NULL,
 	NULL,
-	false,
-	false,
 	NULL
 };
 
@@ -148,19 +144,25 @@ int re_trace_flush(void)
 #ifndef RE_TRACE_ENABLED
 	return 0;
 #endif
-	int i, first_line;
+	int i, flush_count;
+	static int first_line = 1;
 	struct trace_event *event_tmp;
 	struct trace_event *e;
 	char json_arg[1024];
+
+	if (!trace.lock)
+		return 0;
 
 	lock_write_get(trace.lock);
 	event_tmp = trace.event_buffer_flush;
 	trace.event_buffer_flush = trace.event_buffer;
 	trace.event_buffer = event_tmp;
+
+	flush_count = trace.event_count;
+	trace.event_count = 0;
 	lock_rel(trace.lock);
 
-	first_line = 1;
-	for (i = 0; i < trace.event_count; i++)
+	for (i = 0; i < flush_count; i++)
 	{
 		e = &trace.event_buffer_flush[i];
 
@@ -185,6 +187,7 @@ int re_trace_flush(void)
 				(void)re_snprintf(json_arg, sizeof(json_arg),
 					", \"args\":{\"%s\":\"%.*s\"}",
 					e->arg_name, 300, e->arg.a_str);
+				mem_deref((void *)e->arg.a_str);
 			}
 			else
 			{
@@ -221,6 +224,10 @@ void re_trace_event(const char *cat, const char *name, char ph, void *id,
 		return;
 
 	lock_write_get(trace.lock);
+	if (trace.event_count >= TRACE_BUFFER_SIZE) {
+		lock_rel(trace.lock);
+		return;
+	}
 	e = &trace.event_buffer[trace.event_count];
 	++trace.event_count;
 	lock_rel(trace.lock);
