@@ -9,15 +9,16 @@
 #include <re_fmt.h>
 #include <re_list.h>
 #include <re_tmr.h>
+#include <re_lock.h>
+
+#ifdef HAVE_PTHREAD
+#include <pthread.h>
+#endif
 
 #if defined(WIN32)
 #include <windows.h>
 #else
 #include <unistd.h>
-#endif
-
-#ifdef HAVE_PTHREAD
-#include <pthread.h>
 #endif
 
 #define TRACE_BUFFER_SIZE 1000000
@@ -41,13 +42,13 @@ struct trace_event {
 /** Trace configuration */
 static struct {
 	int process_id;
-	FILE *f;               /**< Logfile                */
+	FILE *f;
 	int event_count;
 	struct trace_event *event_buffer;
 	struct trace_event *event_buffer_flush;
 	bool tracing;
 	bool flushing;
-	pthread_mutex_t mutex; /**< Thread locking         */
+	struct lock *lock;
 } trace = {
 	0,
 	NULL,
@@ -56,6 +57,7 @@ static struct {
 	NULL,
 	false,
 	false,
+	NULL
 };
 
 
@@ -63,8 +65,7 @@ static inline uint32_t get_thread_id(void)
 {
 #if defined(WIN32)
 	return (uint32_t)GetCurrentThreadId();
-#endif
-#if defined (DARWIN) || defined (FREEBSD) || defined (OPENBSD) || \
+#elif defined (DARWIN) || defined (FREEBSD) || defined (OPENBSD) || \
 	defined (NETBSD) || defined (DRAGONFLY)
 	return (unsigned long)(void *)pthread_self();
 #else
@@ -103,7 +104,7 @@ int re_trace_init(const char *json_file)
 		return ENOMEM;
 	}
 
-	pthread_mutex_init(&trace.mutex, 0);
+	lock_alloc(&trace.lock);
 
 	trace.f = fopen(json_file, "w+");
 	if (!trace.f)
@@ -127,7 +128,7 @@ int re_trace_close(void)
 
 	trace.event_buffer = mem_deref(trace.event_buffer);
 	trace.event_buffer_flush = mem_deref(trace.event_buffer_flush);
-	pthread_mutex_destroy(&trace.mutex);
+	trace.lock = mem_deref(trace.lock);
 
 	(void)re_fprintf(trace.f, "\n\t]\n}\n");
 	if (trace.f)
@@ -152,11 +153,11 @@ int re_trace_flush(void)
 	struct trace_event *e;
 	char json_arg[1024];
 
-	pthread_mutex_lock(&trace.mutex);
+	lock_write_get(trace.lock);
 	event_tmp = trace.event_buffer_flush;
 	trace.event_buffer_flush = trace.event_buffer;
 	trace.event_buffer = event_tmp;
-	pthread_mutex_unlock(&trace.mutex);
+	lock_rel(trace.lock);
 
 	first_line = 1;
 	for (i = 0; i < trace.event_count; i++)
@@ -216,14 +217,13 @@ void re_trace_event(const char *cat, const char *name, char ph, void *id,
 #endif
 	struct trace_event *e;
 
-	pthread_mutex_lock(&trace.mutex);
-	if (!trace.f) {
-		pthread_mutex_unlock(&trace.mutex);
+	if (!trace.lock)
 		return;
-	}
+
+	lock_write_get(trace.lock);
 	e = &trace.event_buffer[trace.event_count];
 	++trace.event_count;
-	pthread_mutex_unlock(&trace.mutex);
+	lock_rel(trace.lock);
 
 	e->ts = tmr_jiffies_us();
 	e->id = id;
