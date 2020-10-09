@@ -33,8 +33,8 @@ struct trace_event {
 	re_trace_arg_type arg_type;
 	const char *arg_name;
 	union {
-		const char *string;
-		int value;
+		const char *a_str;
+		int a_int;
 	} arg;
 };
 
@@ -89,8 +89,15 @@ int re_trace_init(const char *json_file)
 
 	trace.event_buffer = mem_zalloc(
 		TRACE_BUFFER_SIZE * sizeof(struct trace_event), NULL);
+	if (!trace.event_buffer)
+		return ENOMEM;
+
 	trace.event_buffer_flush = mem_zalloc(
 		TRACE_BUFFER_SIZE * sizeof(struct trace_event), NULL);
+	if (!trace.event_buffer_flush) {
+		trace.event_buffer = mem_deref(trace.event_buffer);
+		return ENOMEM;
+	}
 
 	pthread_mutex_init(&trace.mutex, 0);
 
@@ -139,6 +146,7 @@ int re_trace_flush(void)
 	int i, first_line;
 	struct trace_event *event_tmp;
 	struct trace_event *e;
+	char json_arg[1024];
 
 	pthread_mutex_lock(&trace.mutex);
 	event_tmp = trace.event_buffer_flush;
@@ -150,11 +158,43 @@ int re_trace_flush(void)
 	for (i = 0; i < trace.event_count; i++)
 	{
 		e = &trace.event_buffer_flush[i];
+
+		switch (e->arg_type)
+		{
+		case RE_TRACE_ARG_NONE:
+			json_arg[0] = '\0';
+			break;
+		case RE_TRACE_ARG_INT:
+			(void)re_snprintf(json_arg, sizeof(json_arg),
+					", \"args\":{\"%s\":%i}",
+					e->arg_name, e->arg.a_int);
+			break;
+		case RE_TRACE_ARG_STRING_CONST:
+			(void)re_snprintf(json_arg, sizeof(json_arg),
+					", \"args\":{\"%s\":\"%s\"}",
+					e->arg_name, e->arg.a_str);
+			break;
+		case RE_TRACE_ARG_STRING_COPY:
+			if (str_len(e->arg.a_str) > 300)
+			{
+				(void)re_snprintf(json_arg, sizeof(json_arg),
+					", \"args\":{\"%s\":\"%.*s\"}",
+					e->arg_name, 300, e->arg.a_str);
+			}
+			else
+			{
+				(void)re_snprintf(json_arg, sizeof(json_arg),
+					", \"args\":{\"%s\":\"%s\"}",
+					e->arg_name, e->arg.a_str);
+			}
+			break;
+		}
 		(void)re_fprintf(trace.f,
 			"%s{\"cat\":\"%s\",\"pid\":%i,\"tid\":%lu,\"ts\":%llu,"
-			"\"ph\":\"%c\",\"name\":\"%s\"}",
+			"\"ph\":\"%c\",\"name\":\"%s\"%s}",
 			first_line ? "" : ",\n",
-			e->cat, e->pid, e->tid, e->ts, e->ph, e->name);
+			e->cat, e->pid, e->tid, e->ts, e->ph, e->name,
+			str_len(json_arg) ? json_arg : "");
 		first_line = 0;
 	}
 
@@ -163,7 +203,9 @@ int re_trace_flush(void)
 }
 
 
-void re_trace_event(const char *cat, const char *name, char ph, void *id)
+void re_trace_event(const char *cat, const char *name, char ph, void *id,
+		   re_trace_arg_type arg_type, const char *arg_name,
+		   void *arg_value)
 {
 #ifndef RE_TRACE_ENABLED
 	return;
@@ -186,4 +228,21 @@ void re_trace_event(const char *cat, const char *name, char ph, void *id)
 	e->name = name;
 	e->pid = get_process_id();
 	e->tid = get_thread_id();
+	e->arg_type = arg_type;
+	e->arg_name = arg_name;
+
+	switch (arg_type)
+	{
+	case RE_TRACE_ARG_NONE:
+		break;
+	case RE_TRACE_ARG_INT:
+		e->arg.a_int = (int)(uintptr_t)arg_value;
+		break;
+	case RE_TRACE_ARG_STRING_CONST:
+		e->arg.a_str = (const char *)arg_value;
+		break;
+	case RE_TRACE_ARG_STRING_COPY:
+		str_dup((char **)&e->arg.a_str, (const char *)arg_value);
+		break;
+	}
 }
