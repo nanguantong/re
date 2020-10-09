@@ -63,6 +63,10 @@ static inline uint32_t get_thread_id(void)
 {
 #if defined(WIN32)
 	return (uint32_t)GetCurrentThreadId();
+#endif
+#if defined (DARWIN) || defined (FREEBSD) || defined (OPENBSD) || \
+	defined (NETBSD) || defined (DRAGONFLY)
+	return (unsigned long)(void *)pthread_self();
 #else
 	return (unsigned long)pthread_self();
 #endif
@@ -236,7 +240,7 @@ void re_trace_event(const char *cat, const char *name, char ph, void *id,
 	case RE_TRACE_ARG_NONE:
 		break;
 	case RE_TRACE_ARG_INT:
-		e->arg.a_int = (int)(uintptr_t)arg_value;
+		e->arg.a_int = (int)(intptr_t)arg_value;
 		break;
 	case RE_TRACE_ARG_STRING_CONST:
 		e->arg.a_str = (const char *)arg_value;
