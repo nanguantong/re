@@ -2,7 +2,6 @@
  * @file trace.c RE_TRACE helpers
  * JSON traces (chrome://tracing)
  */
-#include <stdio.h>
 #include <re_types.h>
 #include <re_mem.h>
 #include <re_trace.h>
@@ -145,10 +144,10 @@ int re_trace_flush(void)
 	return 0;
 #endif
 	int i, flush_count;
-	static int first_line = 1;
+	static bool first_line = true;
 	struct trace_event *event_tmp;
 	struct trace_event *e;
-	char json_arg[1024];
+	char json_arg[256];
 
 	if (!trace.lock)
 		return 0;
@@ -166,8 +165,7 @@ int re_trace_flush(void)
 	{
 		e = &trace.event_buffer_flush[i];
 
-		switch (e->arg_type)
-		{
+		switch (e->arg_type) {
 		case RE_TRACE_ARG_NONE:
 			json_arg[0] = '\0';
 			break;
@@ -182,19 +180,11 @@ int re_trace_flush(void)
 					e->arg_name, e->arg.a_str);
 			break;
 		case RE_TRACE_ARG_STRING_COPY:
-			if (str_len(e->arg.a_str) > 300)
-			{
-				(void)re_snprintf(json_arg, sizeof(json_arg),
-					", \"args\":{\"%s\":\"%.*s\"}",
-					e->arg_name, 300, e->arg.a_str);
-				mem_deref((void *)e->arg.a_str);
-			}
-			else
-			{
-				(void)re_snprintf(json_arg, sizeof(json_arg),
+			(void)re_snprintf(json_arg, sizeof(json_arg),
 					", \"args\":{\"%s\":\"%s\"}",
 					e->arg_name, e->arg.a_str);
-			}
+
+			mem_deref((void *)e->arg.a_str);
 			break;
 		}
 		(void)re_fprintf(trace.f,
@@ -203,7 +193,7 @@ int re_trace_flush(void)
 			first_line ? "" : ",\n",
 			e->cat, e->pid, e->tid, e->ts, e->ph, e->name,
 			str_len(json_arg) ? json_arg : "");
-		first_line = 0;
+		first_line = false;
 	}
 
 	(void)fflush(trace.f);
@@ -242,8 +232,7 @@ void re_trace_event(const char *cat, const char *name, char ph, void *id,
 	e->arg_type = arg_type;
 	e->arg_name = arg_name;
 
-	switch (arg_type)
-	{
+	switch (arg_type) {
 	case RE_TRACE_ARG_NONE:
 		break;
 	case RE_TRACE_ARG_INT:

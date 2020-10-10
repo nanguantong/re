@@ -30,15 +30,27 @@ void re_trace_event(const char *cat, const char *name, char ph, void *id,
 	re_trace_event(c, n, 'E', 0, RE_TRACE_ARG_NONE, NULL, NULL)
 #define RE_TRACE_INSTANT(c, n) \
 	re_trace_event(c, n, 'I', 0, RE_TRACE_ARG_NONE, NULL, NULL)
-#define RE_TRACE_COUNTER(c, n, val) \
-	re_trace_event(c, n, 'C', 0, RE_TRACE_ARG_INT, \
-	n, (void *)(intptr_t)val)
+#define RE_TRACE_INSTANT_C(c, n, vname, str) \
+	re_trace_event(c, n, 'I', 0, RE_TRACE_ARG_STRING_CONST, \
+	vname, (void *)(str))
+#define RE_TRACE_INSTANT_I(c, n, i) \
+	re_trace_event(c, n, 'I', 0, RE_TRACE_ARG_INT, \
+	n, (void *)(intptr_t)i)
+#define RE_TRACE_PROCESS_NAME(n) \
+	re_trace_event("", "process_name", 'M', 0, RE_TRACE_ARG_STRING_COPY, \
+	"name", (void *)(n))
+#define RE_TRACE_THREAD_NAME(n) \
+	re_trace_event("", "thread_name", 'M', 0, RE_TRACE_ARG_STRING_COPY, \
+	"name", (void *)(n))
 
 #else
 
 #define RE_TRACE_BEGIN(c, n)
 #define RE_TRACE_END(c, n)
 #define RE_TRACE_INSTANT(c, n)
-#define RE_TRACE_COUNTER(c, n, val)
+#define RE_TRACE_INSTANT_C(c, n, str)
+#define RE_TRACE_INSTANT_I(c, n, i)
+#define RE_TRACE_META_PROCESS_NAME(n)
+#define RE_TRACE_THREAD_NAME(n)
 
 #endif

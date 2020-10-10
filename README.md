@@ -144,6 +144,7 @@ Please send private feedback to libre [at] creytiv.com
 | udp      | testing  | UDP transport                                  |
 | uri      | testing  | Generic URI library                            |
 | websock  | unstable | WebSocket Client and Server                    |
+| trace    | unstable | Trace Helpers JSON traces (chrome://tracing)   |
 
 legend:
 * *stable* - code complete; stable code and stable API
