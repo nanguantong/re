@@ -60,8 +60,8 @@ static inline unsigned long get_thread_id(void)
 {
 #if defined(WIN32)
 	return (unsigned long)GetCurrentThreadId();
-#elif defined (DARWIN) || defined (FREEBSD) || defined (OPENBSD) || \
-	defined (NETBSD) || defined (DRAGONFLY)
+#elif defined(DARWIN) || defined(FREEBSD) || defined(OPENBSD) || \
+      defined(NETBSD) || defined(DRAGONFLY)
 	return (unsigned long)(void *)pthread_self();
 #else
 	return (unsigned long)pthread_self();
@@ -242,7 +242,8 @@ void re_trace_event(const char *cat, const char *name, char ph, void *id,
 		e->arg.a_str = (const char *)arg_value;
 		break;
 	case RE_TRACE_ARG_STRING_COPY:
-		str_dup((char **)&e->arg.a_str, (const char *)arg_value);
+		str_dup((char **)&e->arg.a_str,
+			(const char *)arg_value);
 		break;
 	}
 }

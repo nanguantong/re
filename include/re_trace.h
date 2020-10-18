@@ -54,3 +54,6 @@ void re_trace_event(const char *cat, const char *name, char ph, void *id,
 #define RE_TRACE_THREAD_NAME(n)
 
 #endif
+
+#define RE_TRACE_BEGIN_FUNC() RE_TRACE_BEGIN(__FILE__, __func__)
+#define RE_TRACE_END_FUNC() RE_TRACE_END(__FILE__, __func__)
