@@ -46,13 +46,15 @@ static struct {
 	struct trace_event *event_buffer;
 	struct trace_event *event_buffer_flush;
 	struct lock *lock;
+	bool init;
 } trace = {
 	0,
 	NULL,
 	0,
 	NULL,
 	NULL,
-	NULL
+	NULL,
+	true
 };
 
 
@@ -108,6 +110,8 @@ int re_trace_init(const char *json_file)
 	(void)re_fprintf(trace.f, "{\t\n\t\"traceEvents\": [\n");
 	(void)fflush(trace.f);
 
+	trace.init = true;
+
 	return 0;
 }
 
@@ -144,7 +148,6 @@ int re_trace_flush(void)
 	return 0;
 #endif
 	int i, flush_count;
-	static bool first_line = true;
 	struct trace_event *event_tmp;
 	struct trace_event *e;
 	char json_arg[256];
@@ -190,10 +193,10 @@ int re_trace_flush(void)
 		(void)re_fprintf(trace.f,
 			"%s{\"cat\":\"%s\",\"pid\":%i,\"tid\":%lu,\"ts\":%llu,"
 			"\"ph\":\"%c\",\"name\":\"%s\"%s}",
-			first_line ? "" : ",\n",
+			trace.init ? "" : ",\n",
 			e->cat, e->pid, e->tid, e->ts, e->ph, e->name,
 			str_len(json_arg) ? json_arg : "");
-		first_line = false;
+		trace.init = false;
 	}
 
 	(void)fflush(trace.f);
