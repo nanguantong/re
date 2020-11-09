@@ -86,6 +86,8 @@ int re_trace_init(const char *json_file)
 #ifndef RE_TRACE_ENABLED
 	return 0;
 #endif
+	int err = 0;
+
 	if (!json_file)
 		return EINVAL;
 
@@ -97,22 +99,31 @@ int re_trace_init(const char *json_file)
 	trace.event_buffer_flush = mem_zalloc(
 		TRACE_BUFFER_SIZE * sizeof(struct trace_event), NULL);
 	if (!trace.event_buffer_flush) {
-		trace.event_buffer = mem_deref(trace.event_buffer);
+		mem_deref(trace.event_buffer);
 		return ENOMEM;
 	}
 
 	lock_alloc(&trace.lock);
 
 	trace.f = fopen(json_file, "w+");
-	if (!trace.f)
-		return errno;
+	if (!trace.f) {
+		err = errno;
+		goto out;
+	}
 
 	(void)re_fprintf(trace.f, "{\t\n\t\"traceEvents\": [\n");
 	(void)fflush(trace.f);
 
 	trace.init = true;
 
-	return 0;
+out:
+	if (err) {
+		trace.init = false;
+		mem_deref(trace.event_buffer);
+		mem_deref(trace.event_buffer_flush);
+	}
+
+	return err;
 }
 
 
