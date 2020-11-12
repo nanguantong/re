@@ -154,6 +154,9 @@
     <Filter Include="src\sha">
       <UniqueIdentifier>{5bb58e89-4183-4380-993a-d01d1bc3d9d9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\websock">
+      <UniqueIdentifier>{ac66b271-ecb2-4b55-839e-e532dc27b650}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\include\re.h">
@@ -863,9 +866,11 @@
     <ClCompile Include="..\..\src\sha\sha1.c">
       <Filter>src\sha</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\websock\websock.c" />
     <ClCompile Include="..\..\src\http\chunk.c">
       <Filter>src\http</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\websock\websock.c">
+      <Filter>src\websock</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
